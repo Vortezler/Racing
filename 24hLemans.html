@@ -1,0 +1,2009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drift & Pit Racing</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #1a1a1a;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #hud {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #444;
+            color: white;
+            min-width: 250px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .hud-row {
+            margin-bottom: 15px;
+        }
+
+        .hud-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .label {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #aaa;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .value {
+            font-size: 32px;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .bar-container {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #555;
+            position: relative;
+        }
+
+        .rpm-bar-container {
+            width: 100%;
+            height: 12px;
+            background: #222;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #444;
+            margin-top: 8px;
+            position: relative;
+        }
+
+        #rpm-bar {
+            height: 100%;
+            width: 0%;
+            background: #33cc33;
+            transition: width 0.05s linear, background-color 0.1s;
+        }
+
+        #tire-bar {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #ff3333, #ffcc00, #33cc33);
+            background-size: 200% 100%;
+            background-position: right center;
+            transition: width 0.1s linear, background-position 0.2s ease;
+        }
+
+        #pit-warning {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #ff3333;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.8);
+            animation: pulse 1s infinite;
+            display: none;
+            pointer-events: none;
+        }
+
+        #controls-help {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #ccc;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.6;
+            pointer-events: none;
+            border: 1px solid #333;
+        }
+
+        .key {
+            display: inline-block;
+            background: #eee;
+            color: #000;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin: 0 3px;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.05); }
+            100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        #start-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 0 4px 15px rgba(0,0,0,0.9);
+            pointer-events: none;
+            z-index: 20;
+            animation: pulse 1.5s infinite;
+            display: none; 
+        }
+
+        #pre-game-menu {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 20, 30, 0.95);
+            padding: 35px 50px;
+            border-radius: 12px;
+            border: 2px solid #555;
+            color: white;
+            z-index: 50;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,1);
+            backdrop-filter: blur(10px);
+        }
+
+        #pre-game-menu h2 {
+            margin-top: 0;
+            margin-bottom: 25px;
+            color: #ffcc00;
+            font-size: 32px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        #menu-backdrop {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.65);
+            z-index: 40;
+            backdrop-filter: blur(4px);
+        }
+
+        .menu-row {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 40px;
+            text-align: left;
+        }
+
+        .menu-row label {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ccc;
+        }
+
+        .menu-row input[type="number"], .menu-row select {
+            width: 140px;
+            padding: 8px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 1px solid #666;
+            background: #222;
+            color: white;
+            text-align: center;
+        }
+
+        .menu-row input[type="checkbox"] {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+
+        .menu-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        #reset-settings-btn {
+            background: #555;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-transform: uppercase;
+        }
+
+        #reset-settings-btn:hover {
+            background: #444;
+        }
+
+        #confirm-settings-btn {
+            background: #33cc33;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-transform: uppercase;
+        }
+
+        #confirm-settings-btn:hover {
+            background: #28a428;
+        }
+
+        #finish-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 72px;
+            font-weight: bold;
+            text-shadow: 0 4px 20px rgba(0,0,0,1);
+            pointer-events: none;
+            z-index: 30;
+            display: none;
+            text-align: center;
+        }
+
+        #top-info-bar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 25px;
+            border-radius: 8px;
+            border: 2px solid #444;
+            color: #aaa;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .top-val {
+            color: white;
+            font-size: 20px;
+            font-variant-numeric: tabular-nums;
+            margin-left: 5px;
+        }
+
+        #leaderboard {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid #444;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            backdrop-filter: blur(5px);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .lb-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            color: #fff;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .lb-row.is-player {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .lb-color {
+            width: 20px;
+            height: 14px;
+            border-radius: 3px;
+            border: 1px solid #222;
+        }
+
+        .lb-pos {
+            width: 20px;
+            text-align: right;
+            color: #aaa;
+        }
+
+        .lb-gap {
+            width: 50px;
+            text-align: right;
+            font-size: 13px;
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="menu-backdrop"></div>
+
+    <div id="pre-game-menu">
+        <h2>Race Settings</h2>
+        <div class="menu-row">
+            <label for="lap-input">Total Laps (Le Mans Cycle):</label>
+            <input type="number" id="lap-input" value="10" min="1" max="100">
+        </div>
+        <div class="menu-row">
+            <label for="start-pos-input">Starting Position:</label>
+            <select id="start-pos-input">
+                <option value="1">1st (Pole Position)</option>
+                <option value="10" selected>10th (Back of Pack)</option>
+            </select>
+        </div>
+        <div class="menu-row">
+            <label for="ai-diff-input">AI Difficulty:</label>
+            <select id="ai-diff-input">
+                <option value="rookie">Rookie</option>
+                <option value="pro" selected>Pro</option>
+                <option value="legend">Legend</option>
+            </select>
+        </div>
+        <div class="menu-row">
+            <label for="rubberband-input">Rubberband AI (Close Racing):</label>
+            <input type="checkbox" id="rubberband-input">
+        </div>
+        <div class="menu-row">
+            <label for="weather-input">Weather Condition:</label>
+            <select id="weather-input">
+                <option value="none">Clear</option>
+                <option value="random" selected>Random Chance</option>
+                <option value="always">Always Rain</option>
+            </select>
+        </div>
+        <div class="menu-row">
+            <label for="tire-wear-input">Tire Wear Rate:</label>
+            <select id="tire-wear-input">
+                <option value="0">Off (Arcade)</option>
+                <option value="1" selected>Normal</option>
+                <option value="2">Fast (Strategy)</option>
+            </select>
+        </div>
+        <div class="menu-row">
+            <label for="tod-input">Time of Day Mode:</label>
+            <select id="tod-input">
+                <option value="dynamic" selected>Dynamic 24h Cycle</option>
+                <option value="day">Always Day</option>
+                <option value="night">Always Night</option>
+            </select>
+        </div>
+        <div class="menu-row">
+            <label for="autoshift-input" title="Automatically shifts to Gear 1 when stopped or stalled">Auto Downshift Assist:</label>
+            <input type="checkbox" id="autoshift-input">
+        </div>
+        <div class="menu-buttons">
+            <button id="reset-settings-btn">RESET OPTIONS</button>
+            <button id="confirm-settings-btn">CONFIRM & START</button>
+        </div>
+    </div>
+
+    <div id="start-message">Press 'W' to Start 24h Race</div>
+    <div id="finish-message">RACE FINISHED!<br><span style="font-size: 32px;" id="finish-position"></span></div>
+
+    <div id="top-info-bar">
+        <div>POS: <span id="position-display" class="top-val">1 / 10</span></div>
+        <div>LAP: <span id="lap-display" class="top-val">1 / 10</span></div>
+        <div id="timer-display" class="top-val">00:00.000</div>
+    </div>
+
+    <div id="leaderboard">
+        <!-- Generated via JS -->
+    </div>
+
+    <div id="pit-warning">BOX BOX BOX!<br><span style="font-size: 24px;">Tires Gone - Pull into Blue Pit Lane</span></div>
+
+    <div id="controls-help">
+        <div><span class="key">W</span> Accelerate</div>
+        <div><span class="key">S</span> Brake / Reverse</div>
+        <div><span class="key">A</span> <span class="key">D</span> Steer</div>
+        <div><span class="key">SPACE</span> Handbrake / Drift</div>
+        <div><span class="key">Q</span> / <span class="key">E</span> Shift Up / Down</div>
+    </div>
+
+    <div id="hud">
+        <div class="hud-row">
+            <span class="label">Gear</span>
+            <div class="value" id="gear-display">1</div>
+            <div class="rpm-bar-container">
+                <div id="rpm-bar"></div>
+            </div>
+        </div>
+        <div class="hud-row">
+            <span class="label">Speed</span>
+            <div class="value" id="speed-display">0 <span style="font-size:16px; color:#aaa;">MPH</span></div>
+        </div>
+        <div class="hud-row">
+            <span class="label">Tires</span>
+            <div class="bar-container">
+                <div id="tire-bar"></div>
+            </div>
+            <div id="pit-status" style="margin-top: 5px; font-size: 12px; color: #66b3ff; display: none;">PITTING - REPAIRING...</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const lapDisplay = document.getElementById('lap-display');
+        const speedDisplay = document.getElementById('speed-display');
+        const gearDisplay = document.getElementById('gear-display');
+        const rpmBar = document.getElementById('rpm-bar');
+        const positionDisplay = document.getElementById('position-display');
+        const timeDisplay = document.getElementById('timer-display');
+        const leaderboard = document.getElementById('leaderboard');
+        const tireBar = document.getElementById('tire-bar');
+        const pitWarning = document.getElementById('pit-warning');
+        const pitStatus = document.getElementById('pit-status');
+        const startMessage = document.getElementById('start-message');
+        const finishMessage = document.getElementById('finish-message');
+        const finishPosition = document.getElementById('finish-position');
+        
+        const preGameMenu = document.getElementById('pre-game-menu');
+        const menuBackdrop = document.getElementById('menu-backdrop');
+        const confirmSettingsBtn = document.getElementById('confirm-settings-btn');
+        const resetSettingsBtn = document.getElementById('reset-settings-btn');
+        const lapInput = document.getElementById('lap-input');
+        const startPosInput = document.getElementById('start-pos-input');
+        const aiDiffInput = document.getElementById('ai-diff-input');
+        const rubberbandInput = document.getElementById('rubberband-input');
+        const weatherInput = document.getElementById('weather-input');
+        const tireWearInput = document.getElementById('tire-wear-input');
+        const todInput = document.getElementById('tod-input');
+        const autoshiftInput = document.getElementById('autoshift-input');
+
+        function formatTime(ms) {
+            if (ms === 0) return "00:00.000";
+            let d = new Date(ms);
+            let m = d.getMinutes().toString().padStart(2, '0');
+            let s = d.getSeconds().toString().padStart(2, '0');
+            let msec = d.getMilliseconds().toString().padStart(3, '0');
+            return `${m}:${s}.${msec}`;
+        }
+
+        let TOTAL_LAPS = 10;
+        let carLap = 1;
+        let lapStartTime = 0;
+        let lapStarted = false;
+        let raceStarted = false; 
+        let menuActive = true;
+        let autoDownshiftEnabled = false;
+        let isRaining = false;
+        
+        // Camera & Polish State
+        let camX = 100;
+        let camY = 0;
+        let camScale = 1.0;
+        let screenShake = 0;
+        
+        // Dynamic Weather Variables
+        let rainIntensity = 0; 
+        let targetRainIntensity = 0;
+        let weatherTimer = 0;
+        
+        // Game Settings State
+        let gameSettings = {
+            difficulty: 'pro',
+            rubberband: false,
+            weather: 'random',
+            tireWear: 1,
+            timeOfDay: 'dynamic'
+        };
+        
+        const SF_LINE_X = 200;
+
+        resetSettingsBtn.addEventListener('click', () => {
+            lapInput.value = "10";
+            startPosInput.value = "10";
+            aiDiffInput.value = "pro";
+            rubberbandInput.checked = false;
+            weatherInput.value = "random";
+            tireWearInput.value = "1";
+            todInput.value = "dynamic";
+            autoshiftInput.checked = false;
+        });
+
+        confirmSettingsBtn.addEventListener('click', () => {
+            let selectedLaps = parseInt(lapInput.value);
+            if (selectedLaps && selectedLaps > 0) TOTAL_LAPS = selectedLaps;
+            autoDownshiftEnabled = autoshiftInput.checked;
+            
+            // Read Menu Inputs
+            gameSettings.difficulty = aiDiffInput.value;
+            gameSettings.rubberband = rubberbandInput.checked;
+            gameSettings.weather = weatherInput.value;
+            gameSettings.tireWear = parseFloat(tireWearInput.value);
+            gameSettings.timeOfDay = todInput.value;
+
+            // Determine Weather
+            if (gameSettings.weather === 'always') {
+                targetRainIntensity = 1;
+                rainIntensity = 1; // Instantly start raining
+            } else if (gameSettings.weather === 'random') {
+                targetRainIntensity = 0;
+                rainIntensity = 0;
+                weatherTimer = 600; // Check weather 10 seconds after race starts
+            } else {
+                targetRainIntensity = 0;
+                rainIntensity = 0;
+            }
+
+            // Adjust Grid positions dynamically
+            let playerPosIndex = parseInt(startPosInput.value) - 1; 
+            
+            car.x = startPositions[playerPosIndex].x;
+            car.y = startPositions[playerPosIndex].y;
+            car.previousX = car.x;
+
+            let aiIndex = 0;
+            for (let i = 0; i < 10; i++) {
+                if (i !== playerPosIndex) {
+                    aiCars[aiIndex].x = startPositions[i].x;
+                    aiCars[aiIndex].y = startPositions[i].y;
+                    aiCars[aiIndex].previousX = aiCars[aiIndex].x;
+                    aiIndex++;
+                }
+            }
+            
+            preGameMenu.style.display = 'none';
+            menuBackdrop.style.display = 'none';
+            startMessage.style.display = 'block';
+            menuActive = false;
+            
+            lapDisplay.innerHTML = `1 <span style="font-size:20px; color:#aaa;">/ ${TOTAL_LAPS}</span>`;
+        });
+
+        // Resize Canvas
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Input Tracking
+        const keys = { w: false, a: false, s: false, d: false, ' ': false };
+        window.addEventListener('keydown', (e) => {
+            if (menuActive) return; // Block input while in menu
+            
+            const key = e.key.toLowerCase();
+            
+            if (!raceStarted && ['w', 'a', 's', 'd', 'q', 'e', ' '].includes(key)) {
+                raceStarted = true;
+                startMessage.style.display = 'none';
+            }
+
+            if (keys.hasOwnProperty(key)) keys[key] = true;
+            
+            if (key === 'q' && car.gear < car.maxGear) car.gear++;
+            if (key === 'e' && car.gear > 1) car.gear--;
+        });
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (keys.hasOwnProperty(key)) keys[key] = false;
+        });
+
+        // Game World Setup (Track Dimensions)
+        const trackPoints = [];
+        
+        for (let x = 0; x <= 4000; x += 200) {
+            trackPoints.push({x: x, y: 0});
+        }
+        for(let a = -Math.PI/2 + 0.1; a <= Math.PI/2; a += 0.1) {
+            trackPoints.push({x: 4000 + Math.cos(a)*1000, y: 1000 + Math.sin(a)*1000});
+        }
+        for (let x = 4000; x >= 3000; x -= 200) {
+            trackPoints.push({x: x, y: 2000});
+        }
+        trackPoints.push({x: 2800, y: 2200});
+        trackPoints.push({x: 2600, y: 2600});
+        trackPoints.push({x: 2400, y: 3000});
+        trackPoints.push({x: 1600, y: 3000});
+        trackPoints.push({x: 1400, y: 2600});
+        trackPoints.push({x: 1200, y: 2200});
+        trackPoints.push({x: 1000, y: 2000});
+        for (let x = 1000; x >= 0; x -= 200) {
+            trackPoints.push({x: x, y: 2000});
+        }
+        for(let a = Math.PI/2 + 0.1; a <= Math.PI*1.5 - 0.1; a += 0.1) {
+            trackPoints.push({x: 0 + Math.cos(a)*1000, y: 1000 + Math.sin(a)*1000});
+        }
+
+        const TRACK = {
+            points: trackPoints,
+            width: 450,
+            pit: { x: 800, y: 240, width: 2000, height: 140 }
+        };
+
+        // Calculate Track Bounds for Minimap
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (let p of trackPoints) {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+        }
+        TRACK.bounds = {
+            minX: minX - TRACK.width,
+            maxX: maxX + TRACK.width,
+            minY: minY - TRACK.width,
+            maxY: maxY + TRACK.width,
+            width: (maxX - minX) + TRACK.width * 2,
+            height: (maxY - minY) + TRACK.width * 2
+        };
+
+        function getOffsetPoint(idx, offset) {
+            let p1 = TRACK.points[idx];
+            let p2 = TRACK.points[(idx + 1) % TRACK.points.length];
+            let dx = p2.x - p1.x;
+            let dy = p2.y - p1.y;
+            let dist = Math.hypot(dx, dy) || 1;
+            // Track Normal vector
+            let nx = -dy / dist;
+            let ny = dx / dist;
+            return { x: p1.x + nx * offset, y: p1.y + ny * offset };
+        }
+
+        // Car Object Maker
+        function createCar(startX, startY, color, isAI = false) {
+            return {
+                x: startX,
+                y: startY,
+                previousX: startX,
+                vx: 0,
+                vy: 0,
+                angle: Math.PI / 2, // Facing right
+                angularVelocity: 0,
+                
+                gear: 1,
+                maxGear: 6,
+                // Stretched gear speeds for Le Mans 200+ MPH top speeds!
+                gearSpeeds: [0, 10, 16, 23, 30, 36, 42],
+                
+                maxSpeed: 42,
+                acceleration: 0.75, // Buffed base acceleration for faster-paced straights!
+                brakeForce: 0.6,
+                reverseForce: 0.2,
+                turnSpeed: 0.055,
+                turnAcceleration: 0.008,
+                turnFriction: 0.90,
+                
+                normalGrip: 0.88,   
+                driftGrip: 0.98,    
+                iceGrip: 0.995,     
+                
+                tires: 100, 
+                
+                width: 20,
+                height: 40,
+                color: color,
+                isPitting: false,
+                needsToSlowDownInPit: false,
+                isAI: isAI,
+                targetIndex: 1,
+                
+                // Drafting & Physics Bias
+                isDrafting: false,
+                laneOffset: isAI ? (Math.random() - 0.5) * 200 : 0, // AI spread across track width
+                
+                // Combat / Spin States
+                isSpunOut: false,
+                spinRecoveryTimer: 0,
+                spinDirection: 1,
+                
+                // Position Tracking
+                nextCheckpoint: 1,
+                checkpointScore: 0,
+                raceScore: 0,
+                
+                // AI Specific Variables
+                wantsToPit: false,
+                pitState: 0,
+                mistakeCooldown: Date.now() + Math.random() * 5000, 
+                mistakeActiveUntil: 0,
+                mistakeDirection: 0,
+                
+                // Polish States
+                justShifted: false
+            };
+        }
+
+        // --- GRID SETUP ---
+        const startPositions = [];
+        for (let i = 0; i < 10; i++) {
+            // F1 Style Staggered Grid (offset rows, 2 columns)
+            startPositions.push({ 
+                x: 180 - (i * 45), 
+                y: (i % 2 === 0) ? -60 : 60 
+            });
+        }
+
+        const car = createCar(startPositions[9].x, startPositions[9].y, '#e60000', false); // Player defaults to 10th
+        
+        const aiCars = [];
+        // Expanded to 9 vibrant AI colors
+        const aiColors = ['#0066cc', '#33cc33', '#ffcc00', '#9933cc', '#ff6600', '#00cccc', '#cc00cc', '#ffffff', '#ff3399'];
+        
+        let initialAiIndex = 0;
+        for (let i = 0; i < 10; i++) {
+            if (i !== 9) { // Skip player's default position
+                aiCars.push(createCar(startPositions[i].x, startPositions[i].y, aiColors[initialAiIndex], true));
+                initialAiIndex++;
+            }
+        }
+        
+        const vehicles = [car, ...aiCars]; 
+
+        // Particles & Trails
+        const skidMarks = []; 
+        const particles = []; 
+
+        function lerp(a, b, t) { return a + (b - a) * t; }
+
+        function distToSegment(p, v, w) {
+            let l2 = (w.x - v.x)**2 + (w.y - v.y)**2;
+            if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y);
+            let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
+        }
+
+        function getClosestTrackInfo(x, y) {
+            let minDist = Infinity;
+            let closestP = null;
+
+            for (let i = 0; i < TRACK.points.length; i++) {
+                let nextI = (i + 1) % TRACK.points.length;
+                let p1 = TRACK.points[i];
+                let p2 = TRACK.points[nextI];
+
+                let dx = p2.x - p1.x;
+                let dy = p2.y - p1.y;
+                let l2 = dx*dx + dy*dy;
+                
+                let t = 0;
+                if (l2 !== 0) {
+                    t = ((x - p1.x) * dx + (y - p1.y) * dy) / l2;
+                    t = Math.max(0, Math.min(1, t));
+                }
+                
+                let projX = p1.x + t * dx;
+                let projY = p1.y + t * dy;
+
+                let d = Math.hypot(x - projX, y - projY);
+                if (d < minDist) {
+                    minDist = d;
+                    closestP = {x: projX, y: projY};
+                }
+            }
+            return { dist: minDist, point: closestP };
+        }
+
+        function checkSurface(x, y) {
+            if (x >= TRACK.pit.x && x <= TRACK.pit.x + TRACK.pit.width && 
+                y >= TRACK.pit.y && y <= TRACK.pit.y + TRACK.pit.height) {
+                return 'pit';
+            }
+
+            let minDist = Infinity;
+            for (let i = 0; i < TRACK.points.length; i++) {
+                let nextI = (i + 1) % TRACK.points.length;
+                let d = distToSegment({x, y}, TRACK.points[i], TRACK.points[nextI]);
+                if (d < minDist) minDist = d;
+            }
+
+            if (minDist <= TRACK.width / 2) return 'asphalt';
+            return 'grass';
+        }
+
+        function createParticle(x, y, color, vX = 0, vY = 0, sizeMult = 1) {
+            particles.push({
+                x: x, y: y,
+                vx: (Math.random() - 0.5) * 2 - vX * 0.1,
+                vy: (Math.random() - 0.5) * 2 - vY * 0.1,
+                life: 1.0,
+                color: color,
+                size: (Math.random() * 5 + 3) * sizeMult
+            });
+        }
+
+        function updateVehicle(v, keysInput) {
+            v.maxSpeed = v.gearSpeeds[v.gear];
+
+            let aiSpeedMult = 1.0;
+            if (v.isAI) {
+                if (gameSettings.difficulty === 'rookie') aiSpeedMult = 0.92;
+                else if (gameSettings.difficulty === 'legend') aiSpeedMult = 1.06;
+
+                // AI smoothly slows down up to 8% based on how hard it is raining
+                aiSpeedMult *= lerp(1.0, 0.92, rainIntensity);
+
+                // Rubberband AI: dynamically speed them up/slow them down based on distance to player
+                if (gameSettings.rubberband && raceStarted) {
+                    let diff = v.raceScore - car.raceScore;
+                    if (diff < -5000) aiSpeedMult += 0.12; // Catch up!
+                    else if (diff > 5000) aiSpeedMult -= 0.08; // Slow down!
+                }
+                v.maxSpeed *= aiSpeedMult;
+            }
+
+            // Handle Spin Out State
+            if (v.isSpunOut) {
+                keysInput = { w: false, a: false, s: false, d: false, ' ': false }; // Coast and slide, no brakes!
+                v.spinRecoveryTimer--;
+                if (v.spinRecoveryTimer <= 0) v.isSpunOut = false;
+                
+                // Visual smoke while stalled out
+                if (Math.random() < 0.6) {
+                    createParticle(v.x, v.y, 'rgba(150, 150, 150, 0.7)', v.vx * 0.3, v.vy * 0.3);
+                }
+            }
+
+            // Slipstream Buffs
+            let currentAccel = v.acceleration;
+            if (v.isAI) currentAccel *= aiSpeedMult; // Apply AI difficulty multiplier to accel too
+            
+            if (v.isDrafting) {
+                currentAccel *= 1.45; // 45% acceleration boost (Amplified)
+                v.maxSpeed *= 1.20;   // 20% higher top speed (Amplified)
+            }
+
+            let sn = Math.sin(v.angle);
+            let cs = Math.cos(v.angle);
+            let vFwd = v.vx * sn - v.vy * cs;
+            let vLat = v.vx * cs + v.vy * sn;
+            let surface = checkSurface(v.x, v.y);
+            let absoluteSpeed = Math.hypot(v.vx, v.vy);
+            let speedRatio = absoluteSpeed / v.maxSpeed;
+
+            // Auto Downshift Accessibility
+            if (!v.isAI && autoDownshiftEnabled && absoluteSpeed < 3 && v.gear > 1) {
+                v.gear = 1;
+            }
+
+            let isBraking = false;
+            
+            // --- 1. THE POWERBAND (Natural Torque Curve) ---
+            let currentGearMax = v.gearSpeeds[v.gear];
+            let prevGearMax = v.gearSpeeds[v.gear - 1] || 0;
+            let rpmRatio = absoluteSpeed / currentGearMax;
+            
+            // Custom Torque Curve: Buffed 4th, 5th, and 6th gear so straights feel intensely fast!
+            const torqueMultipliers = [1.0, 0.90, 0.80, 0.72, 0.65, 0.60];
+            let gearTorqueMultiplier = torqueMultipliers[v.gear - 1] || 0.60;
+            currentAccel *= gearTorqueMultiplier;
+
+            // Torque Curve Engine Logic
+            let minOptimalSpeed = prevGearMax * 0.65; 
+            if (absoluteSpeed < minOptimalSpeed && v.gear > 1) {
+                // Bogging down: Softer penalty. The engine just feels a bit sluggish instead of dead.
+                currentAccel *= 0.50; 
+            } else if (rpmRatio > 0.4 && rpmRatio < 0.85) {
+                // Peak Powerband: Engine is in the sweet spot and pulling the hardest!
+                currentAccel *= 1.2; 
+            } else if (absoluteSpeed >= currentGearMax) {
+                // Redline: Engine is physically maxed out. No forward acceleration until you shift up.
+                currentAccel = 0; 
+            }
+
+            if (surface === 'grass') {
+                currentAccel *= 0.6; // Wheels spin, but you keep more drive to save it
+            } else if (surface === 'asphalt') {
+                // Smoothly introduce wheel spin based on rain intensity
+                currentAccel *= lerp(1.0, 0.88, rainIntensity);
+            }
+
+            if (keysInput['w']) {
+                vFwd += currentAccel;
+            }
+            
+            if (keysInput['s']) {
+                if (vFwd > 0.5) {
+                    // Smoothly increase braking distance as track gets wetter
+                    vFwd -= v.brakeForce * (surface === 'asphalt' ? lerp(1.0, 0.85, rainIntensity) : 1.0); 
+                    isBraking = true;
+                } else {
+                    vFwd -= v.reverseForce;
+                }
+            }
+
+            if (v.isSpunOut) {
+                v.angularVelocity = v.spinDirection * 0.25; // Force legit rapid spin
+                v.angle += v.angularVelocity;
+            } else if (Math.abs(vFwd) > 0.1 || absoluteSpeed > 0.1) {
+                let turnDir = 0;
+                if (keysInput['d']) turnDir = 1;
+                if (keysInput['a']) turnDir = -1;
+
+                let steerMult = vFwd >= -0.1 ? 1 : -1;
+                let speedTurnFactor = Math.max(0.4, 1.0 - (speedRatio * 0.3));
+                
+                if (turnDir !== 0) v.angularVelocity += turnDir * v.turnAcceleration * steerMult * speedTurnFactor;
+                
+                let currentMaxTurn = v.turnSpeed * speedTurnFactor;
+                if (v.angularVelocity > currentMaxTurn) v.angularVelocity = currentMaxTurn;
+                if (v.angularVelocity < -currentMaxTurn) v.angularVelocity = -currentMaxTurn;
+                
+                v.angle += v.angularVelocity;
+                
+                // --- TIRE SCRUB (Organic Deceleration) ---
+                // Turning physically drags the car, bleeding speed. This organically drops your 
+                // speed into a lower gear's range, prompting you to downshift for the exit!
+                let speedScrub = 1.0 - (Math.abs(v.angularVelocity) * 0.18);
+                vFwd *= speedScrub;
+                
+                // Apex Predator AI: Legend & Pro AI get a micro grip-boost to simulate the perfect racing line
+                let activeTurnFriction = v.turnFriction;
+                if (v.isAI) {
+                    if (gameSettings.difficulty === 'legend') activeTurnFriction = 0.915;
+                    else if (gameSettings.difficulty === 'pro') activeTurnFriction = 0.905;
+                    else if (gameSettings.difficulty === 'rookie') activeTurnFriction = 0.885;
+                }
+                
+                if (surface === 'grass') activeTurnFriction = 0.985; 
+                else if (surface === 'asphalt') {
+                    // Smoothly transition to looser, wavy steering as rain increases
+                    activeTurnFriction = lerp(activeTurnFriction, 0.94, rainIntensity); 
+                }
+                v.angularVelocity *= activeTurnFriction;
+            } else {
+                v.angularVelocity = 0;
+            }
+
+            let grip = v.normalGrip;
+            let isDrifting = false;
+            let tireFactor = v.tires / 100; 
+
+            if (keysInput[' ']) {
+                // Smoothly increase slide while handbraking in rain
+                grip = lerp(v.driftGrip, 0.99, rainIntensity);
+                vFwd *= 0.98;
+                isDrifting = true;
+            } else if (surface === 'asphalt') {
+                // Smoothly reduce lateral grip as rain falls
+                grip = lerp(v.normalGrip, 0.93, rainIntensity);
+            }
+
+            if (Math.abs(vLat) > 2.0 && tireFactor < 0.8) grip = lerp(grip, lerp(v.driftGrip, 0.99, rainIntensity), 0.5);
+            if (v.tires <= 0) grip = v.iceGrip;
+            if (v.isSpunOut) grip = 0.995; 
+            if (surface === 'grass') grip = 0.992; // Massive loss of lateral traction on dirt
+
+            vLat *= grip;
+
+            v.vx = vFwd * sn + vLat * cs;
+            v.vy = vFwd * -cs + vLat * sn;
+
+            let friction = 0.988;
+            if (surface === 'grass') {
+                friction = 0.982; 
+                if (absoluteSpeed > 2) createParticle(v.x, v.y, 'rgba(100, 150, 50, 0.5)', v.vx, v.vy);
+            }
+            
+            let currentMax = v.maxSpeed;
+            if (v.tires <= 0) currentMax = 3;
+
+            let currentSpeed = Math.hypot(v.vx, v.vy);
+            if (currentSpeed > currentMax) {
+                v.vx = (v.vx / currentSpeed) * currentMax;
+                v.vy = (v.vy / currentSpeed) * currentMax;
+            }
+
+            v.vx *= friction;
+            v.vy *= friction;
+
+            v.previousX = v.x;
+            v.x += v.vx;
+            v.y += v.vy;
+
+            // --- WALL COLLISION ---
+            let trackInfo = getClosestTrackInfo(v.x, v.y);
+            let maxDist = TRACK.width / 2 + 160; // 160px grass buffer before hitting the solid wall
+
+            if (trackInfo.dist > maxDist) {
+                let dx = v.x - trackInfo.point.x;
+                let dy = v.y - trackInfo.point.y;
+                let len = Math.hypot(dx, dy);
+                
+                if (len > 0) {
+                    let nx = dx / len;
+                    let ny = dy / len;
+                    
+                    v.x = trackInfo.point.x + nx * maxDist;
+                    v.y = trackInfo.point.y + ny * maxDist;
+
+                    let dot = v.vx * nx + v.vy * ny;
+                    if (dot > 0) {
+                        let restitution = 0.4; 
+                        v.vx -= (1 + restitution) * dot * nx;
+                        v.vy -= (1 + restitution) * dot * ny;
+                        
+                        v.angularVelocity += (Math.random() - 0.5) * 0.15;
+                        v.vx *= 0.8;
+                        v.vy *= 0.8;
+
+                        // Heavy impact screen shake
+                        if (!v.isAI && Math.abs(dot) > 1) {
+                            screenShake = Math.min(screenShake + Math.abs(dot) * 3, 40);
+                        }
+
+                        if (Math.abs(dot) > 2) {
+                            for(let p=0; p<6; p++) {
+                                createParticle(v.x + nx*10, v.y + ny*10, '#ffcc00', nx*40 * Math.random(), ny*40 * Math.random(), 0.6);
+                                createParticle(v.x + nx*10, v.y + ny*10, 'rgba(150,150,150,0.5)', nx*20, ny*20, 1.5);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Checkpoint Tracking for Position
+            let cpTarget = TRACK.points[v.nextCheckpoint];
+            if (cpTarget && Math.hypot(cpTarget.x - v.x, cpTarget.y - v.y) < 450) {
+                v.nextCheckpoint = (v.nextCheckpoint + 1) % TRACK.points.length;
+                v.checkpointScore++;
+            }
+
+            // Doubled the wear rate to find the perfect middle ground! 
+            // This ensures exactly 1 necessary pit stop in a standard 10-lap race.
+            let wearRate = 0.002; 
+            if (Math.abs(vLat) > 1.5) {
+                wearRate += Math.abs(vLat) * 0.003; 
+                isDrifting = true;
+            }
+            
+            // Apply Tire Wear Setting
+            wearRate *= gameSettings.tireWear;
+            v.tires -= wearRate;
+            
+            if (v.tires < 0) v.tires = 0;
+
+            // High speed water spray gracefully scales with rain intensity
+            if (rainIntensity > 0.1 && surface === 'asphalt' && absoluteSpeed > 8 && Math.random() < (0.4 * rainIntensity)) {
+                let rcs = Math.cos(v.angle);
+                let rsn = Math.sin(v.angle);
+                let rwX = v.x - rsn * 15;
+                let rwY = v.y + rcs * 15;
+                createParticle(rwX, rwY, `rgba(180, 200, 230, ${0.4 * rainIntensity})`, v.vx * 0.5, v.vy * 0.5, 1.2);
+            }
+
+            if (Math.abs(vLat) > 1.8 || (isBraking && absoluteSpeed > 5) || (keysInput[' '] && absoluteSpeed > 2)) {
+                let rcs = Math.cos(v.angle);
+                let rsn = Math.sin(v.angle);
+                let rwX = v.x - rsn * 15;
+                let rwY = v.y + rcs * 15;
+                
+                // Only leave black rubber skidmarks if it is mostly dry
+                if (rainIntensity < 0.5 || surface !== 'asphalt') {
+                    skidMarks.push({
+                        x1: rwX + rcs * 8, y1: rwY + rsn * 8,
+                        x2: rwX - rcs * 8, y2: rwY - rsn * 8,
+                        life: 1.0 - rainIntensity // Fade out skidmarks in rain
+                    });
+                }
+                
+                if (Math.random() < 0.3 && surface === 'asphalt') {
+                    // Blend from grey smoke to blue water spray based on rain
+                    let r = lerp(200, 200, rainIntensity);
+                    let g = lerp(200, 220, rainIntensity);
+                    let b = lerp(200, 255, rainIntensity);
+                    let a = lerp(0.4, 0.6, rainIntensity);
+                    let pColor = `rgba(${r}, ${g}, ${b}, ${a})`; 
+                    createParticle(rwX, rwY, pColor, v.vx, v.vy);
+                }
+            }
+
+            v.isPitting = false;
+            v.needsToSlowDownInPit = false;
+            if (surface === 'pit' && v.tires < 100) {
+                if (absoluteSpeed < 3.5) { 
+                    v.tires += 0.4;
+                    if (v.tires > 100) v.tires = 100;
+                    v.isPitting = true;
+                } else {
+                    v.needsToSlowDownInPit = true; 
+                }
+            }
+        }
+
+        // Main Loop
+        function update() {
+            // --- DYNAMIC WEATHER ENGINE ---
+            if (raceStarted && gameSettings.weather === 'random') {
+                weatherTimer--;
+                if (weatherTimer <= 0) {
+                    // Weather event triggered
+                    if (targetRainIntensity === 0) {
+                        targetRainIntensity = Math.random() < 0.35 ? 1 : 0; // 35% chance to start storm
+                    } else {
+                        targetRainIntensity = Math.random() < 0.60 ? 0 : 1; // 60% chance to end storm
+                    }
+                    weatherTimer = 1800 + (Math.random() * 2400); // Check again in 30 to 70 seconds
+                }
+            }
+
+            // Smoothly transition current weather to the target
+            if (rainIntensity < targetRainIntensity) {
+                rainIntensity += 0.002; // Takes ~8 seconds to fully pour
+                if (rainIntensity > targetRainIntensity) rainIntensity = targetRainIntensity;
+            } else if (rainIntensity > targetRainIntensity) {
+                rainIntensity -= 0.001; // Takes ~16 seconds to dry up
+                if (rainIntensity < targetRainIntensity) rainIntensity = targetRainIntensity;
+            }
+
+            // --- DRAFTING / SLIPSTREAM LOGIC ---
+            for (let v of vehicles) {
+                v.isDrafting = false;
+                if (Math.hypot(v.vx, v.vy) < 8) continue; 
+                
+                let fx = Math.sin(v.angle);
+                let fy = -Math.cos(v.angle);
+
+                for (let other of vehicles) {
+                    if (v === other) continue;
+                    let dx = other.x - v.x;
+                    let dy = other.y - v.y;
+                    let dist = Math.hypot(dx, dy);
+
+                    // The Peloton Effect: Slipstream reaches further (450) and is slightly wider (0.90) to create pack trains
+                    if (dist > 50 && dist < 450) {
+                        let dot = (dx * fx + dy * fy) / dist;
+                        if (dot > 0.90) { 
+                            v.isDrafting = true;
+                            if (Math.random() < 0.6) {
+                                createParticle(v.x + (Math.random()-0.5)*v.width*3, v.y + (Math.random()-0.5)*v.height*3, 'rgba(200,220,255,0.7)', -v.vx*0.8, -v.vy*0.8);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Update Player
+            if (carLap <= TOTAL_LAPS) {
+                updateVehicle(car, keys);
+            }
+
+            // Update All AI Opponents
+            for (let aiCar of aiCars) {
+                let aiKeys = { w: false, a: false, s: false, d: false, ' ': false };
+                
+                if (aiCar.tires < 20 && aiCar.pitState === 0) aiCar.wantsToPit = true;
+                
+                if (aiCar.wantsToPit && aiCar.pitState === 0) {
+                    if (aiCar.x > 0 && aiCar.x < 500 && Math.abs(aiCar.y) < 200 && aiCar.vx > 0) aiCar.pitState = 1;
+                }
+
+                let aiTarget;
+                let pitSpeedLimit = false;
+
+                if (aiCar.pitState === 1) {
+                    aiTarget = { x: 900, y: 310 };
+                    if (Math.hypot(aiTarget.x - aiCar.x, aiTarget.y - aiCar.y) < 150) aiCar.pitState = 2;
+                } else if (aiCar.pitState === 2) {
+                    aiTarget = { x: 2700, y: 310 };
+                    pitSpeedLimit = true;
+                    if (Math.hypot(aiTarget.x - aiCar.x, aiTarget.y - aiCar.y) < 150) aiCar.pitState = 3;
+                } else if (aiCar.pitState === 3) {
+                    aiTarget = { x: 3200, y: 0 };
+                    if (Math.hypot(aiTarget.x - aiCar.x, aiTarget.y - aiCar.y) < 200) {
+                        aiCar.pitState = 0;
+                        aiCar.wantsToPit = false;
+                        
+                        let closestDist = Infinity;
+                        let closestIdx = 0;
+                        for (let i = 0; i < TRACK.points.length; i++) {
+                            let d = Math.hypot(TRACK.points[i].x - aiCar.x, TRACK.points[i].y - aiCar.y);
+                            if (d < closestDist) {
+                                closestDist = d;
+                                closestIdx = i;
+                            }
+                        }
+                        aiCar.targetIndex = closestIdx;
+                    }
+                }
+
+                if (aiCar.pitState === 0) {
+                    aiTarget = getOffsetPoint(aiCar.targetIndex, aiCar.laneOffset);
+                    let pTarget = TRACK.points[aiCar.targetIndex]; 
+                    let distToCenterTarget = Math.hypot(pTarget.x - aiCar.x, pTarget.y - aiCar.y);
+
+                    if (distToCenterTarget < 300) {
+                        aiCar.targetIndex = (aiCar.targetIndex + 1) % TRACK.points.length;
+                        aiTarget = getOffsetPoint(aiCar.targetIndex, aiCar.laneOffset);
+                    }
+                }
+
+                let dx = aiTarget.x - aiCar.x;
+                let dy = aiTarget.y - aiCar.y;
+                let aiSpeed = Math.hypot(aiCar.vx, aiCar.vy);
+
+                let lookaheadPt = aiTarget;
+                
+                if (aiCar.pitState === 0) {
+                    let lookaheadDist = 400 + (aiSpeed / aiCar.maxSpeed) * 1100;
+                    let tempDist = Math.hypot(dx, dy);
+                    let tempIdx = aiCar.targetIndex;
+                    
+                    while (tempDist < lookaheadDist) {
+                        let nextIdx = (tempIdx + 1) % TRACK.points.length;
+                        let p1 = TRACK.points[tempIdx];
+                        let p2 = TRACK.points[nextIdx];
+                        tempDist += Math.hypot(p2.x - p1.x, p2.y - p1.y);
+                        tempIdx = nextIdx;
+                        lookaheadPt = getOffsetPoint(nextIdx, aiCar.laneOffset);
+                    }
+                }
+
+                let targetAngle = Math.atan2(dx, -dy);
+                let deltaAngle = targetAngle - aiCar.angle;
+                
+                while (deltaAngle > Math.PI) deltaAngle -= Math.PI * 2;
+                while (deltaAngle < -Math.PI) deltaAngle += Math.PI * 2;
+
+                let mistakeChance = 0.10;
+                if (gameSettings.difficulty === 'rookie') mistakeChance = 0.20;
+                else if (gameSettings.difficulty === 'legend') mistakeChance = 0.02;
+
+                let now = Date.now();
+                if (raceStarted && aiCar.pitState === 0 && now > aiCar.mistakeCooldown) {
+                    aiCar.mistakeCooldown = now + 4000;
+                    if (Math.random() < mistakeChance) { 
+                        aiCar.mistakeActiveUntil = now + 600;
+                        aiCar.mistakeDirection = Math.random() < 0.5 ? 1 : -1;
+                    }
+                }
+                let isMakingMistake = now < aiCar.mistakeActiveUntil;
+
+                if (isMakingMistake) {
+                    if (aiCar.mistakeDirection === 1) aiKeys.d = true;
+                    else aiKeys.a = true;
+                } else {
+                    if (deltaAngle > 0.05) aiKeys.d = true;
+                    else if (deltaAngle < -0.05) aiKeys.a = true;
+                }
+
+                if (pitSpeedLimit) {
+                    if (aiSpeed > 3.0) aiKeys.s = true; 
+                    else if (aiSpeed < 2.0) aiKeys.w = true;
+                } else if (isMakingMistake) {
+                    aiKeys.w = true;
+                } else {
+                    let lookaheadAngle = Math.atan2(lookaheadPt.x - aiCar.x, -(lookaheadPt.y - aiCar.y));
+                    let deltaLookahead = lookaheadAngle - aiCar.angle;
+                    
+                    while (deltaLookahead > Math.PI) deltaLookahead -= Math.PI * 2;
+                    while (deltaLookahead < -Math.PI) deltaLookahead += Math.PI * 2;
+
+                    let absLookahead = Math.abs(deltaLookahead);
+                    let absImmediate = Math.abs(deltaAngle);
+                    
+                    // Calculate actual forward momentum (positive = forward, negative = reversing/sliding backward)
+                    let aiFwd = aiCar.vx * Math.sin(aiCar.angle) - aiCar.vy * Math.cos(aiCar.angle);
+                    
+                    // Apex Predator AI: Change how late they brake based on difficulty
+                    let brakeMult = 1.0;
+                    if (gameSettings.difficulty === 'legend') brakeMult = 1.45; // Brake 45% later!
+                    else if (gameSettings.difficulty === 'pro') brakeMult = 1.20; // Pro brakes 20% later
+                    else if (gameSettings.difficulty === 'rookie') brakeMult = 0.70; // Brake 30% earlier
+
+                    // --- WRONG WAY RECOVERY FIX ---
+                    if (absImmediate > Math.PI / 2) {
+                        // Car is facing backwards/sideways after a crash!
+                        // Brake ONLY if moving forward. If stopped or sliding backward, floor the gas to spin around.
+                        if (aiFwd > 3) aiKeys.s = true; 
+                        else aiKeys.w = true; 
+                    } 
+                    // Normal racing logic - Buffed speed thresholds so AI carries way more momentum through turns
+                    else if (absLookahead > (0.55 * brakeMult) && aiSpeed > 14) {
+                        if (aiFwd > 1) aiKeys.s = true; else aiKeys.w = true;
+                    } 
+                    else if (absLookahead > (0.3 * brakeMult) && aiSpeed > 22) {
+                        if (aiFwd > 1) aiKeys.s = true; else aiKeys.w = true;
+                    } 
+                    else if (absImmediate > (0.6 * brakeMult) && aiSpeed > 14) {
+                        if (aiFwd > 1) aiKeys.s = true; else aiKeys.w = true;
+                    } 
+                    else {
+                        aiKeys.w = true; 
+                    }
+                }
+
+                if (aiSpeed > aiCar.gearSpeeds[aiCar.gear] * 0.9 && aiCar.gear < aiCar.maxGear) aiCar.gear++;
+                else if (aiSpeed < aiCar.gearSpeeds[aiCar.gear - 1] * 0.8 && aiCar.gear > 1) aiCar.gear--;
+
+                if (!raceStarted) aiKeys = { w: false, a: false, s: false, d: false, ' ': false };
+
+                updateVehicle(aiCar, aiKeys);
+            }
+
+            // --- MULTIPLAYER COLLISIONS (DIRECTIONAL BIAS) ---
+            for (let i = 0; i < vehicles.length; i++) {
+                for (let j = i + 1; j < vehicles.length; j++) {
+                    let v1 = vehicles[i];
+                    let v2 = vehicles[j];
+                    
+                    let dx = v2.x - v1.x;
+                    let dy = v2.y - v1.y;
+                    let distance = Math.hypot(dx, dy);
+                    let minDistance = 34; 
+
+                    if (distance < minDistance && distance > 0) {
+                        let overlap = minDistance - distance;
+                        let nx = dx / distance;
+                        let ny = dy / distance;
+                        
+                        v1.x -= nx * (overlap / 2);
+                        v1.y -= ny * (overlap / 2);
+                        v2.x += nx * (overlap / 2);
+                        v2.y += ny * (overlap / 2);
+                        
+                        let dvx = v1.vx - v2.vx;
+                        let dvy = v1.vy - v2.vy;
+                        
+                        let dotProduct = dvx * nx + dvy * ny;
+                        
+                        if (dotProduct > 0) {
+                            let restitution = 0.6; 
+                            let impulse = (1 + restitution) * dotProduct / 2;
+                            let dramaticImpulse = impulse * 1.5;
+                            
+                            let f1x = Math.sin(v1.angle);
+                            let f1y = -Math.cos(v1.angle);
+                            let dot1 = nx * f1x + ny * f1y; 
+
+                            let f2x = Math.sin(v2.angle);
+                            let f2y = -Math.cos(v2.angle);
+                            let dot2 = -nx * f2x + -ny * f2y; 
+                            
+                            let m1Factor = 1.0; let m1CanSpin = true;
+                            if (dot1 > 0.4) { m1Factor = 0.2; m1CanSpin = false; } 
+                            else if (dot1 < -0.4) { m1Factor = 1.8; } 
+                            
+                            let m2Factor = 1.0; let m2CanSpin = true;
+                            if (dot2 > 0.4) { m2Factor = 0.2; m2CanSpin = false; } 
+                            else if (dot2 < -0.4) { m2Factor = 1.8; } 
+
+                            v1.vx -= dramaticImpulse * m1Factor * nx;
+                            v1.vy -= dramaticImpulse * m1Factor * ny;
+                            v2.vx += dramaticImpulse * m2Factor * nx;
+                            v2.vy += dramaticImpulse * m2Factor * ny;
+                            
+                            let spinAmount = Math.min(dramaticImpulse * 0.03, 0.4);
+
+                            if (m1CanSpin && dramaticImpulse > 1.2 && dot1 < 0.2) {
+                                v1.isSpunOut = true;
+                                v1.spinRecoveryTimer = 60; 
+                                v1.spinDirection = Math.random() > 0.5 ? 1 : -1;
+                            } else if (m1CanSpin) {
+                                v1.angularVelocity -= spinAmount * m1Factor * (Math.random() > 0.5 ? 1 : -1);
+                            }
+
+                            if (m2CanSpin && dramaticImpulse > 1.2 && dot2 < 0.2) {
+                                v2.isSpunOut = true;
+                                v2.spinRecoveryTimer = 60;
+                                v2.spinDirection = Math.random() > 0.5 ? 1 : -1;
+                            } else if (m2CanSpin) {
+                                v2.angularVelocity += spinAmount * m2Factor * (Math.random() > 0.5 ? 1 : -1);
+                            }
+
+                            // Takedown / Ramming screen shake
+                            if (!v1.isAI || !v2.isAI) {
+                                screenShake = Math.min(screenShake + dramaticImpulse * 4, 35);
+                            }
+
+                            if (dramaticImpulse > 0.8) {
+                                let midX = (v1.x + v2.x) / 2;
+                                let midY = (v1.y + v2.y) / 2;
+                                for(let p=0; p<6; p++) {
+                                    createParticle(midX, midY, '#ffcc00', nx * 60 * Math.random(), ny * 60 * Math.random(), 0.4); 
+                                    if (dramaticImpulse > 1.5 && p < 3) {
+                                        createParticle(midX, midY, 'rgba(200,200,200,0.5)', -nx * 20, -ny * 20); 
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // --- 24H OF LE MANS LAP TRACKING ---
+            if (car.x > SF_LINE_X && car.previousX <= SF_LINE_X && Math.abs(car.y) < TRACK.width / 2) {
+                let now = performance.now();
+                if (lapStarted) {
+                    let lapTime = now - lapStartTime;
+                    // Ensure they actually drove around the track (hit 80% of checkpoints)
+                    if (lapTime > 5000 && car.checkpointScore > (carLap * TRACK.points.length * 0.8)) {
+                        carLap++;
+                        lapStartTime = now;
+                        
+                        if (carLap > TOTAL_LAPS) {
+                            // Race Finishes!
+                            finishMessage.style.display = 'block';
+                        }
+                    }
+                } else {
+                    lapStarted = true;
+                    lapStartTime = now;
+                }
+            }
+
+            if (car.isPitting) {
+                pitStatus.innerText = 'PITTING - REPAIRING...';
+                pitStatus.style.color = '#33cc33';
+                pitStatus.style.display = 'block';
+            } else if (car.needsToSlowDownInPit) {
+                pitStatus.innerText = 'SLOW DOWN TO REPAIR!';
+                pitStatus.style.color = '#ffcc00';
+                pitStatus.style.display = 'block';
+            } else {
+                pitStatus.style.display = 'none';
+            }
+
+            // --- CALCULATE RACE POSITIONS ---
+            for (let v of vehicles) {
+                let cpTarget = TRACK.points[v.nextCheckpoint] || TRACK.points[0];
+                let distToNext = Math.hypot(cpTarget.x - v.x, cpTarget.y - v.y);
+                v.raceScore = (v.checkpointScore * 10000) - distToNext;
+                // Calculate actual smooth track distance for UI gap times
+                v.actualDist = (v.checkpointScore * 200) - distToNext; 
+            }
+            
+            let standings = [...vehicles].sort((a, b) => b.raceScore - a.raceScore);
+            let playerPlace = standings.indexOf(car) + 1;
+
+            let absoluteSpeed = Math.hypot(car.vx, car.vy);
+
+            // --- CAMERA & SCREEN SHAKE LOGIC ---
+            let targetScale = 1.0 - (Math.min(absoluteSpeed, 25) / 25) * 0.12; // Zoom out slightly at high speeds
+            camScale = lerp(camScale, targetScale, 0.05);
+
+            let lookAheadX = car.vx * 12; // Spring slightly ahead of car
+            let lookAheadY = car.vy * 12;
+            
+            camX = lerp(camX, car.x + lookAheadX, 0.1);
+            camY = lerp(camY, car.y + lookAheadY, 0.1);
+
+            screenShake *= 0.85; // Shake decay
+            if (screenShake < 0.1) screenShake = 0;
+
+            // --- UPDATE VISUALS & PARTICLES ---
+            for (let i = skidMarks.length - 1; i >= 0; i--) {
+                skidMarks[i].life -= 0.002;
+                if (skidMarks[i].life <= 0) skidMarks.splice(i, 1);
+            }
+            if (skidMarks.length > 300) skidMarks.shift();
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.size += 0.2;
+                p.life -= 0.02;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            // --- UPDATE HUD ---
+            let displaySpeed = Math.round(absoluteSpeed * 5); 
+            speedDisplay.innerHTML = `${displaySpeed} <span style="font-size:16px; color:#aaa;">MPH</span>`;
+            gearDisplay.innerText = car.gear;
+            
+            // --- 4. VISUAL RPM BAR ---
+            let currentGearMax = car.gearSpeeds[car.gear];
+            let prevGearMax = car.gearSpeeds[car.gear - 1] || 0;
+            let rpmRatio = absoluteSpeed / currentGearMax;
+            if (rpmRatio > 1) rpmRatio = 1;
+            
+            rpmBar.style.width = `${rpmRatio * 100}%`;
+            
+            // Color code the RPM bar to feed back engine state
+            let minOptimalSpeed = prevGearMax * 0.6;
+            if (absoluteSpeed < minOptimalSpeed && car.gear > 1) {
+                rpmBar.style.background = '#888'; // Grey: Bogging down
+            } else if (rpmRatio >= 0.95) {
+                rpmBar.style.background = '#ff3333'; // Red: Redline (Max speed for gear)
+            } else if (rpmRatio > 0.4 && rpmRatio < 0.85) {
+                rpmBar.style.background = '#33cc33'; // Green: Peak Powerband!
+            } else {
+                rpmBar.style.background = '#ffcc00'; // Yellow: Transitioning
+            }
+            
+            // Update Top Info Bar
+            positionDisplay.innerHTML = `${playerPlace} / ${vehicles.length}`;
+            
+            if (carLap <= TOTAL_LAPS) {
+                lapDisplay.innerHTML = `${carLap} / ${TOTAL_LAPS}`;
+            } else {
+                lapDisplay.innerHTML = `FINISH`;
+                const ordinals = ["", "st", "nd", "rd", "th", "th", "th", "th", "th", "th", "th"];
+                finishPosition.innerText = `Finished ${playerPlace}${ordinals[playerPlace]} Place!`;
+            }
+
+            if (lapStarted && carLap <= TOTAL_LAPS) {
+                timeDisplay.innerText = formatTime(performance.now() - lapStartTime);
+            }
+
+            // Update Dynamic Leaderboard
+            let lbHTML = '';
+            for (let i = 0; i < standings.length; i++) {
+                let v = standings[i];
+                let isPlayer = !v.isAI;
+                let gapText = "";
+                let gapColor = "#ccc";
+
+                if (isPlayer) {
+                    gapText = "PLAYER";
+                    gapColor = "#fff";
+                } else {
+                    let distDiff = v.actualDist - car.actualDist;
+                    // Convert distance to approximate seconds (using avg speed of 1800px per sec)
+                    let timeDiff = Math.abs(distDiff) / 1800; 
+                    if (timeDiff > 99.9) timeDiff = 99.9;
+                    
+                    if (distDiff > 0) {
+                        gapText = `+${timeDiff.toFixed(1)}s`;
+                        gapColor = "#ff6666"; // Red: They are ahead of you
+                    } else {
+                        gapText = `-${timeDiff.toFixed(1)}s`;
+                        gapColor = "#66ff66"; // Green: They are behind you
+                    }
+                }
+
+                lbHTML += `
+                    <div class="lb-row ${isPlayer ? 'is-player' : ''}">
+                        <div class="lb-pos">${i + 1}</div>
+                        <div class="lb-color" style="background-color: ${v.color};"></div>
+                        <div class="lb-gap" style="color: ${gapColor};">${gapText}</div>
+                    </div>
+                `;
+            }
+            leaderboard.innerHTML = lbHTML;
+
+            tireBar.style.width = `${car.tires}%`;
+            
+            if (car.tires > 60) tireBar.style.backgroundPosition = '100% center';
+            else if (car.tires > 20) tireBar.style.backgroundPosition = '50% center';
+            else tireBar.style.backgroundPosition = '0% center';
+
+            let surface = checkSurface(car.x, car.y);
+            if (car.tires <= 0 && surface !== 'pit') pitWarning.style.display = 'block';
+            else pitWarning.style.display = 'none';
+        }
+
+        // --- BULLETPROOF CAMERA SETUP ---
+        // This guarantees the Track, Cars, and Headlights NEVER desync!
+        function applyCameraTransform(ctx, shakeX, shakeY) {
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.scale(camScale, camScale);
+            ctx.translate(-camX + shakeX, -camY + shakeY);
+        }
+
+        function draw() {
+            ctx.fillStyle = '#1a1a1a'; // Brightened out of bounds void from #111
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            let shakeX = (Math.random() - 0.5) * screenShake;
+            let shakeY = (Math.random() - 0.5) * screenShake;
+
+            ctx.save();
+            applyCameraTransform(ctx, shakeX, shakeY);
+
+            // --- DRAW TRACK ---
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            ctx.lineWidth = TRACK.width + 360; 
+            ctx.strokeStyle = '#555'; 
+            ctx.beginPath();
+            ctx.moveTo(TRACK.points[0].x, TRACK.points[0].y);
+            for (let i = 1; i < TRACK.points.length; i++) ctx.lineTo(TRACK.points[i].x, TRACK.points[i].y);
+            ctx.closePath();
+            ctx.stroke();
+
+            ctx.lineWidth = TRACK.width + 320; 
+            ctx.strokeStyle = '#325232'; 
+            ctx.beginPath();
+            ctx.moveTo(TRACK.points[0].x, TRACK.points[0].y);
+            for (let i = 1; i < TRACK.points.length; i++) ctx.lineTo(TRACK.points[i].x, TRACK.points[i].y);
+            ctx.closePath();
+            ctx.stroke();
+
+            // Racing Kerbs (Rumble Strips)
+            ctx.lineWidth = TRACK.width + 40;
+            ctx.strokeStyle = '#fff';
+            ctx.beginPath();
+            ctx.moveTo(TRACK.points[0].x, TRACK.points[0].y);
+            for (let i = 1; i < TRACK.points.length; i++) ctx.lineTo(TRACK.points[i].x, TRACK.points[i].y);
+            ctx.closePath();
+            ctx.stroke();
+
+            ctx.lineWidth = TRACK.width + 40;
+            ctx.strokeStyle = '#e60000';
+            ctx.setLineDash([70, 70]);
+            ctx.beginPath();
+            ctx.moveTo(TRACK.points[0].x, TRACK.points[0].y);
+            for (let i = 1; i < TRACK.points.length; i++) ctx.lineTo(TRACK.points[i].x, TRACK.points[i].y);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.lineWidth = TRACK.width;
+            ctx.strokeStyle = '#444'; 
+            ctx.beginPath();
+            ctx.moveTo(TRACK.points[0].x, TRACK.points[0].y);
+            for (let i = 1; i < TRACK.points.length; i++) ctx.lineTo(TRACK.points[i].x, TRACK.points[i].y);
+            ctx.closePath();
+            ctx.stroke();
+
+            ctx.fillStyle = '#223';
+            ctx.fillRect(TRACK.pit.x, TRACK.pit.y, TRACK.pit.width, TRACK.pit.height);
+            ctx.strokeStyle = '#0066cc';
+            ctx.lineWidth = 8;
+            ctx.setLineDash([20, 20]);
+            ctx.beginPath();
+            ctx.moveTo(TRACK.pit.x, TRACK.pit.y);
+            ctx.lineTo(TRACK.pit.x + TRACK.pit.width, TRACK.pit.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = 'rgba(0, 100, 255, 0.2)';
+            for(let i=0; i<10; i++) {
+                ctx.fillRect(TRACK.pit.x + 50 + i*180, TRACK.pit.y + 20, 100, 100);
+                ctx.strokeStyle = '#0066cc';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(TRACK.pit.x + 50 + i*180, TRACK.pit.y + 20, 100, 100);
+            }
+
+            ctx.fillStyle = '#fff';
+            let sfLineX = 200; 
+            for (let i = 0; i < TRACK.width / 20; i++) {
+                for (let j = 0; j < 4; j++) {
+                    if ((i + j) % 2 === 0) ctx.fillRect(sfLineX + j*10, -TRACK.width/2 + i*20, 10, 20);
+                }
+            }
+
+            for (let s of skidMarks) {
+                ctx.fillStyle = `rgba(10, 10, 10, ${s.life * 0.4})`;
+                ctx.beginPath();
+                ctx.arc(s.x1, s.y1, 3, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(s.x2, s.y2, 3, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            function drawVehicle(v, isPlayer) {
+                ctx.save();
+                ctx.translate(v.x, v.y);
+                ctx.rotate(v.angle);
+
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(-v.width/2 + 5, -v.height/2 + 5, v.width, v.height);
+
+                ctx.fillStyle = '#111';
+                let tireW = 4;
+                let tireH = 10;
+                let turnAngle = 0;
+                if (isPlayer) {
+                    if (keys['a']) turnAngle = -0.4;
+                    if (keys['d']) turnAngle = 0.4;
+                } else {
+                    if (v.angularVelocity < -0.01) turnAngle = -0.4;
+                    if (v.angularVelocity > 0.01) turnAngle = 0.4;
+                }
+                
+                ctx.save(); ctx.translate(-v.width/2, -v.height/2 + 5); ctx.rotate(turnAngle); ctx.fillRect(-tireW/2, -tireH/2, tireW, tireH); ctx.restore();
+                ctx.save(); ctx.translate(v.width/2, -v.height/2 + 5); ctx.rotate(turnAngle); ctx.fillRect(-tireW/2, -tireH/2, tireW, tireH); ctx.restore();
+                ctx.fillRect(-v.width/2 - tireW/2, v.height/2 - tireH - 5, tireW, tireH);
+                ctx.fillRect(v.width/2 - tireW/2, v.height/2 - tireH - 5, tireW, tireH);
+
+                ctx.fillStyle = v.color; 
+                ctx.beginPath();
+                ctx.roundRect(-v.width/2, -v.height/2, v.width, v.height, 4);
+                ctx.fill();
+
+                ctx.fillStyle = '#111';
+                ctx.beginPath();
+                ctx.roundRect(-v.width/2 + 2, -v.height/2 + 12, v.width - 4, 10, 2);
+                ctx.fill();
+                
+                if (v.tires > 0) {
+                    ctx.fillStyle = '#ffffcc';
+                    ctx.fillRect(-v.width/2 + 2, -v.height/2, 4, 3);
+                    ctx.fillRect(v.width/2 - 6, -v.height/2, 4, 3);
+                }
+
+                ctx.restore();
+            }
+
+            for (let ai of aiCars) drawVehicle(ai, false);
+            drawVehicle(car, true);
+
+            for (let p of particles) {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+
+            ctx.restore(); 
+
+            // --- 24H DAY / NIGHT CYCLE VISUALS ---
+            let totalCheckpoints = TOTAL_LAPS * TRACK.points.length;
+            // Cap progress at 1.0 to ensure day returns fully
+            let progress = Math.min(1.0, car.checkpointScore / totalCheckpoints);
+            
+            let darkness = 0;
+            let golden = 0;
+            
+            if (gameSettings.timeOfDay === 'day') {
+                darkness = 0; golden = 0;
+            } else if (gameSettings.timeOfDay === 'night') {
+                darkness = 0.75; golden = 0;
+            } else {
+                if (progress < 0.22) {
+                    darkness = 0; golden = 0; // Laps 1-2: Full Day
+                } else if (progress < 0.27) { 
+                    // Sunset Golden Hour fading in
+                    let t = (progress - 0.22) / 0.05;
+                    golden = t * 0.15;
+                } else if (progress < 0.33) { 
+                    // Sunset Golden Hour fading to Night
+                    let t = (progress - 0.27) / 0.06;
+                    golden = 0.15 - (t * 0.15);
+                    darkness = t * 0.75; 
+                } else if (progress < 0.66) { 
+                    // Laps 3-6: Full Night
+                    darkness = 0.75; golden = 0;
+                } else if (progress < 0.71) { 
+                    // Night fading to Sunrise Golden Hour
+                    let t = (progress - 0.66) / 0.05;
+                    darkness = 0.75 - (t * 0.75);
+                    golden = t * 0.15;
+                } else if (progress < 0.76) { 
+                    // Sunrise Golden Hour fading to Day
+                    let t = (progress - 0.71) / 0.05;
+                    golden = 0.15 - (t * 0.15);
+                } else {
+                    darkness = 0; golden = 0; // Laps 7-9: Full Day
+                }
+            }
+
+            // Blend in gloomy storm clouds
+            if (rainIntensity > 0) {
+                darkness = Math.max(darkness, 0.45 * rainIntensity); 
+                golden *= (1.0 - rainIntensity); 
+            }
+
+            // Apply Golden Hour Overlay
+            if (golden > 0) {
+                ctx.fillStyle = `rgba(255, 140, 40, ${golden})`; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Apply Night Overlay
+            if (darkness > 0) {
+                let r = Math.floor(lerp(15, 10, rainIntensity));
+                let g = Math.floor(lerp(20, 30, rainIntensity));
+                let b = Math.floor(lerp(30, 65, rainIntensity));
+                ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${darkness})`; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Determine headlight brightness
+            let lightAlpha = Math.max(darkness, golden * 1.5);
+            if (rainIntensity > 0) lightAlpha = Math.max(lightAlpha, 0.5 * rainIntensity); 
+            if (lightAlpha > 1.0) lightAlpha = 1.0;
+
+            // --- DRAW DYNAMIC HEADLIGHTS ---
+            if (lightAlpha > 0.05) {
+                ctx.save();
+                
+                // Bulletproof fix: We use the exact same applyCameraTransform function to ensure flawless alignment
+                applyCameraTransform(ctx, shakeX, shakeY);
+                
+                // "Lighter" composite mode lets lights beautifully overlap and illuminate darkness
+                ctx.globalCompositeOperation = 'lighter';
+
+                for (let v of vehicles) {
+                    ctx.save();
+                    ctx.translate(v.x, v.y);
+                    ctx.rotate(v.angle);
+
+                    // Forward Headlight Cones
+                    let headGrad = ctx.createLinearGradient(0, -v.height/2, 0, -v.height/2 - 450);
+                    headGrad.addColorStop(0, `rgba(255, 255, 230, ${lightAlpha * 0.8})`);
+                    headGrad.addColorStop(1, 'rgba(255, 255, 230, 0)');
+                    ctx.fillStyle = headGrad;
+                    ctx.beginPath();
+                    ctx.moveTo(-v.width/2 + 2, -v.height/2);
+                    ctx.lineTo(v.width/2 - 2, -v.height/2);
+                    ctx.lineTo(v.width * 3.5, -v.height/2 - 450);
+                    ctx.lineTo(-v.width * 3.5, -v.height/2 - 450);
+                    ctx.fill();
+
+                    // Rear Taillights
+                    let tailGrad = ctx.createLinearGradient(0, v.height/2, 0, v.height/2 + 70);
+                    tailGrad.addColorStop(0, `rgba(255, 10, 0, ${lightAlpha * 0.8})`);
+                    tailGrad.addColorStop(1, 'rgba(255, 10, 0, 0)');
+                    ctx.fillStyle = tailGrad;
+                    ctx.beginPath();
+                    ctx.moveTo(-v.width/2 + 2, v.height/2);
+                    ctx.lineTo(v.width/2 - 2, v.height/2);
+                    ctx.lineTo(v.width * 1.5, v.height/2 + 70);
+                    ctx.lineTo(-v.width * 1.5, v.height/2 + 70);
+                    ctx.fill();
+
+                    // Soft ambient body glow so cars are visible
+                    let carGlow = ctx.createRadialGradient(0, 0, v.width/2, 0, 0, v.width * 3);
+                    carGlow.addColorStop(0, `rgba(255, 255, 255, ${lightAlpha * 0.15})`);
+                    carGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                    ctx.fillStyle = carGlow;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, v.width * 3, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                }
+                ctx.restore();
+                ctx.globalCompositeOperation = 'source-over'; // Reset blend mode for HUD
+            }
+
+            // --- DRAW RAIN STREAKS ---
+            if (rainIntensity > 0) {
+                ctx.save();
+                ctx.strokeStyle = `rgba(200, 220, 230, ${0.25 * rainIntensity})`; 
+                ctx.lineCap = 'round';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                
+                let globalWindX = 18; 
+                let apparentVx = globalWindX - car.vx * 1.5;
+                let apparentVy = 35 - car.vy * 1.5; 
+                
+                let numStreaks = Math.floor(200 * rainIntensity); 
+                for(let i = 0; i < numStreaks; i++) {
+                    let x = Math.random() * canvas.width;
+                    let y = Math.random() * canvas.height;
+                    let len = Math.random() * 0.4 + 0.6; 
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + apparentVx * len, y + apparentVy * len);
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // --- DRAW MINIMAP ---
+            const mapW = 200;
+            const mapH = 150;
+            const mapX = canvas.width - mapW - 30; 
+            const mapY = canvas.height - mapH - 30;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(mapX, mapY, mapW, mapH, 12);
+            ctx.fill();
+            ctx.stroke();
+
+            const scale = Math.min(mapW / TRACK.bounds.width, mapH / TRACK.bounds.height) * 0.85; 
+            const offsetX = mapX + mapW/2 - ((TRACK.bounds.minX + TRACK.bounds.maxX) / 2) * scale;
+            const offsetY = mapY + mapH/2 - ((TRACK.bounds.minY + TRACK.bounds.maxY) / 2) * scale;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(mapX, mapY, mapW, mapH, 12);
+            ctx.clip(); 
+
+            ctx.strokeStyle = '#555'; 
+            ctx.lineWidth = TRACK.width * scale; 
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(offsetX + TRACK.points[0].x * scale, offsetY + TRACK.points[0].y * scale);
+            for (let i = 1; i < TRACK.points.length; i++) {
+                ctx.lineTo(offsetX + TRACK.points[i].x * scale, offsetY + TRACK.points[i].y * scale);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            
+            ctx.fillStyle = '#0066cc';
+            ctx.fillRect(offsetX + TRACK.pit.x * scale, offsetY + TRACK.pit.y * scale, TRACK.pit.width * scale, TRACK.pit.height * scale);
+
+            function drawMinimapDot(v, color) {
+                ctx.save();
+                let vPx = offsetX + v.x * scale;
+                let vPy = offsetY + v.y * scale;
+                ctx.translate(vPx, vPy);
+                ctx.rotate(v.angle);
+
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(0, -6); 
+                ctx.lineTo(4, 4);
+                ctx.lineTo(-4, 4);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            for (let ai of aiCars) drawMinimapDot(ai, ai.color);
+            drawMinimapDot(car, '#ff3333');
+
+            ctx.restore();
+        }
+
+        const TIME_STEP = 1000 / 60; // Base physics speed locked to 60 ticks per second
+        let lastTime = 0;
+        let accumulator = 0;
+
+        function gameLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            let deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+
+            // Cap delta time to prevent a "spiral of death" if the user switches browser tabs
+            if (deltaTime > 250) deltaTime = 250;
+
+            accumulator += deltaTime;
+
+            // Run game logic at exactly 60 updates per second, regardless of screen refresh rate
+            while (accumulator >= TIME_STEP) {
+                update();
+                accumulator -= TIME_STEP;
+            }
+
+            // Draw as fast as the monitor allows for smooth visuals
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start game using requestAnimationFrame to get the initial timestamp
+        requestAnimationFrame(gameLoop);
+
+    </script>
+</body>
+</html>
